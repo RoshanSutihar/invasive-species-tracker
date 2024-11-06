@@ -2,12 +2,14 @@ package com.example.invasivespecies
 
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.Update
 
 @Entity
 data class Species(
@@ -27,10 +29,10 @@ data class Parks(
 
 @Entity
 data class Observation(
-    @PrimaryKey val user: Int ,
+    val user: Int ,
     val park: Int,
     val species: Int,
-    val comment: String,
+    @PrimaryKey val comment: String,
     val date: String
 )
 
@@ -53,6 +55,12 @@ interface InvasiveSpeciesDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertObservation(observation: Observation)
+
+    @Query("SELECT * FROM observation")
+    suspend fun getAllObservations(): List<Observation>
+
+    @Delete
+    suspend fun deleteObservation(observation: Observation)
 }
 
 

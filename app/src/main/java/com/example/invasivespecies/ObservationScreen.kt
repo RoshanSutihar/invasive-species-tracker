@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,9 +30,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.Timer
+import kotlin.concurrent.timerTask
 
 
 @Composable
@@ -43,7 +45,7 @@ fun AddObservationScreen(
     directoryModel: DbFunctions,
     speciesModel : SpeciesModel
 ) {
-    // Access parks with .value
+
     val parks = directoryModel.parks.value
 
     var selectedPark by remember { mutableStateOf<Parks?>(null) }
@@ -67,7 +69,7 @@ fun AddObservationScreen(
 
 
 
-        // TextField for searching and selecting park
+
         OutlinedTextField(
             value = searchText,
             onValueChange = {
@@ -130,10 +132,10 @@ fun AddObservationScreen(
                     date = date,
                     onSuccess = {
 
-                        navController.popBackStack(route = "", inclusive = false)
+                        navController.popBackStack()
                     },
                     onFailure = { error ->
-                        // Display an error message or handle the error as needed
+
                         errorMessage = error
                     }
                 )

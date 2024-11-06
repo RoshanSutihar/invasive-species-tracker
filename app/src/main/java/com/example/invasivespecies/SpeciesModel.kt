@@ -30,9 +30,13 @@ class SpeciesModel(application: Application) : AndroidViewModel(application) {
             .build()
         restInterface = retrofit.create(SpeciesAPIService::class.java)
 
+        val db = Room.databaseBuilder(
+            application,
+            SpeciesDatabase::class.java, "speciesDatabase"
+        ).build()
+        dao = db.gradesDao()
 
     }
-
 
     fun addObservation(
         userId: Int,
@@ -45,65 +49,95 @@ class SpeciesModel(application: Application) : AndroidViewModel(application) {
     ) {
         val newObservation = Observation(userId, parkId, speciesId, comment, date)
 
-
         viewModelScope.launch(Dispatchers.IO) {
-            if (isConnectedToInternet()) {
+            try {
+                // Attempt to create a new observation via the API first
+                Log.d("newObservation", "Attempting to create new observation: $newObservation")
+                val response = restInterface.newObservation(newObservation)
 
-                try {
-                    Log.d("newObservation", "Attempting to create new observation: $newObservation")
-                    val response = restInterface.newObservation(newObservation)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful && response.code() == 200) {
+                        Log.d("newObservation", "Observation successfully created.")
+                        onSuccess() // Call onSuccess if the observation was created successfully
+                    } else {
+                        Log.e("newObservation", "Failed with response: ${response.errorBody()?.string()}")
+                        onFailure("Failed with response code: ${response.code()}")
+                        // If API fails, fall back to saving locally
+                        saveObservationLocally(newObservation, onSuccess, onFailure)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("newObservation", "Error creating observation", e)
+                withContext(Dispatchers.Main) {
+                    onFailure("No Internet. Data saved locally. Please sync data in your profile")
+                }
+                // If there is an error (e.g. network issue), save the observation locally
+                saveObservationLocally(newObservation, onSuccess, onFailure)
+            }
+        }
+    }
 
-                    withContext(Dispatchers.Main) {
-                        if (response.isSuccessful && response.code() == 200) {
-                            Log.d("newObservation", "Observation successfully created.")
-                            onSuccess()
-                        } else {
-                            Log.e(
-                                "newObservation",
-                                "Failed with response: ${response.errorBody()?.string()}"
-                            )
-                            onFailure("Failed with response code: ${response.code()}")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("newObservation", "Error creating observation", e)
-                    withContext(Dispatchers.Main) {
-                        onFailure("An error occurred: ${e.message}")
-                    }
+    private suspend fun saveObservationLocally(
+        observation: Observation,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        try {
+            dao.insertObservation(observation) // Save to local database
+            withContext(Dispatchers.Main) {
+                Log.d("newObservation", "Observation saved locally due to an error with the API.")
+                onSuccess() // Call onSuccess when saved locally
+            }
+        } catch (e: Exception) {
+            Log.e("newObservation", "Error saving observation locally", e)
+            withContext(Dispatchers.Main) {
+                onFailure("Failed to save observation locally: ${e.message}")
+            }
+        }
+    }
+
+    fun sync(onSuccess: (String) -> Unit,
+             onFailure: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+
+            val localObservations = dao.getAllObservations()
+
+            if (localObservations.isEmpty()) {
+
+                withContext(Dispatchers.Main) {
+
+                    Log.d("Sync", "No data to sync.")
+                    onFailure("No Data to sync!")
+
                 }
             } else {
 
                 try {
-                    dao.insertObservation(newObservation)
-                    withContext(Dispatchers.Main) {
-                        Log.d("newObservation", "Observation saved locally due to no internet.")
-                        onSuccess()
+                    for (observation in localObservations) {
+
+                        val response = restInterface.newObservation(observation)
+
+                        withContext(Dispatchers.Main) {
+                            if (response.isSuccessful) {
+                                Log.d("Sync", "Observation synced: $observation")
+
+                                dao.deleteObservation(observation)
+                                onSuccess("Data synced successfully!")
+                            } else {
+                                Log.e("Sync", "Failed to sync observation: ${observation.user}")
+                                onFailure("Something went wrong!")
+                            }
+                        }
                     }
                 } catch (e: Exception) {
-                    Log.e("newObservation", "Error saving observation locally", e)
+                    Log.e("Sync", "Error during sync", e)
                     withContext(Dispatchers.Main) {
-                        onFailure("Failed to save observation locally: ${e.message}")
+
                     }
                 }
             }
         }
-
-
-
-        // end of main viewmodel
     }
-    private fun isConnectedToInternet(): Boolean {
-        val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-        val network = connectivityManager.activeNetwork ?: return false
-        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
-
-        // Check if there's either a WiFi or cellular connection
-        return activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-    }
-
-
 
 
 

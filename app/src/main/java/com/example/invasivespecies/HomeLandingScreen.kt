@@ -2,6 +2,7 @@ package com.example.invasivespecies
 
 
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -110,8 +115,11 @@ fun ProfileScreen(
     userId: Int,
     username: String,
     realname: String,
-    phone: String
+    phone: String,
+    speciesModel : SpeciesModel
 ) {
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -128,9 +136,25 @@ fun ProfileScreen(
         Text("Phone: $phone")
 
         Spacer(modifier = Modifier.height(24.dp))
-
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        successMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         Button(onClick = {
-            // Implement sync functionality here
+            speciesModel.sync(
+                onSuccess = {
+                    successMessage = "Synced successfully!"
+                    Log.d("Sync", "Data synced successfully!")
+                },
+                onFailure = { error ->
+                    errorMessage = error
+                    Log.e("Sync", "Sync failed: $errorMessage")
+                }
+            )
         }) {
             Text("Sync Data")
         }

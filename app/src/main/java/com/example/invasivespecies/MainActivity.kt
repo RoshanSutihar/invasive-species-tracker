@@ -142,7 +142,8 @@ fun SpeciesApp(modifier: Modifier = Modifier) {
                 userId = userId,
                 username = username,
                 realname = realname,
-                phone = phone
+                phone = phone,
+                speciesModel = speciesModel
             )
         }
         composable("speciesDetail/{userId}/{speciesId}/{speciesName}/{speciesImageUrl}") { backStackEntry ->
@@ -196,7 +197,14 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Login", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Invasive Species",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(30.dp))
+
+        Text("Login", style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
